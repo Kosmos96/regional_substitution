@@ -1,7 +1,6 @@
 <?php
 use Bitrix\Main\Context;
 use Bitrix\Main\Loader;
-use Bitrix\Main\Diag\Debug;
 use Bitrix\Highloadblock\HighloadBlockTable;
 
 /**
@@ -25,7 +24,6 @@ class SeoSectionManager
         $result = [];
 
         if ($raw === '') {
-            Debug::dumpToFile(['method' => 'getSectionMap', 'raw' => 'empty'], 'SeoSectionManager', '/proto-log.log');
             return $result;
         }
 
@@ -56,7 +54,6 @@ class SeoSectionManager
             $result[$section] = $hlId;
         }
 
-        Debug::dumpToFile(['method' => 'getSectionMap', 'result' => $result], 'SeoSectionManager', '/proto-log.log');
         return $result;
     }
 
@@ -94,18 +91,13 @@ class SeoSectionManager
         $uri = '/' . trim($uri, '/') . '/';
         $uri = preg_replace('#/+#', '/', $uri);
 
-        $fullUrl = self::normalizeFullUrl($scheme . '://' . $host . $uri);
-        Debug::dumpToFile(['method' => 'getCurrentFullUrl', 'scheme' => $scheme, 'host' => $host, 'uri' => $uri, 'fullUrl' => $fullUrl], 'SeoSectionManager', '/proto-log.log');
-
-        return $fullUrl;
+        return self::normalizeFullUrl($scheme . '://' . $host . $uri);
     }
-
 
     public static function getCurrentSection()
     {
         $map = self::getSectionMap();
         if (empty($map)) {
-            Debug::dumpToFile(['method' => 'getCurrentSection', 'error' => 'map_empty'], 'SeoSectionManager', '/proto-log.log');
             return null;
         }
 
@@ -120,12 +112,14 @@ class SeoSectionManager
         foreach ($sections as $section) {
             $prefix = '/' . trim($section, '/') . '/';
             if ($path === $prefix || str_starts_with($path, $prefix)) {
-                Debug::dumpToFile(['method' => 'getCurrentSection', 'path' => $path, 'section' => $section, 'prefix' => $prefix], 'SeoSectionManager', '/proto-log.log');
                 return $section;
             }
         }
 
-        Debug::dumpToFile(['method' => 'getCurrentSection', 'path' => $path, 'not_matched', 'sections' => array_keys($map)], 'SeoSectionManager', '/proto-log.log');
+        if (count($map) === 1) {
+            return array_key_first($map);
+        }
+
         return null;
     }
 
@@ -141,7 +135,9 @@ class SeoSectionManager
             return $map[$section];
         }
 
-        Debug::dumpToFile(['step' => 'section_not_found', 'section' => $section, 'map' => $map], 'SeoSectionManager', '/proto-log.log');
+        if (count($map) === 1) {
+            return array_values($map)[0];
+        }
 
         return null;
     }
@@ -182,39 +178,34 @@ class SeoSectionManager
         $isLoaded = true;
         $rule = false;
 
-        Debug::dumpToFile(['step' => 'start', 'enabled' => self::isEnabled()], 'SeoSectionManager', '/proto-log.log');
-
         if (!self::isEnabled()) {
-            Debug::dumpToFile(['step' => 'disabled'], 'SeoSectionManager', '/proto-log.log');
+            \Bitrix\Main\Diag\Debug::dumpToFile('cityseo_disabled', '/proto-log.log');
             return false;
         }
 
         if (!Loader::includeModule('highloadblock')) {
-            Debug::dumpToFile(['step' => 'highloadblock_not_loaded'], 'SeoSectionManager', '/proto-log.log');
+            \Bitrix\Main\Diag\Debug::dumpToFile('highloadblock_not_found', '/proto-log.log');
             return false;
         }
 
         $currentUrl = self::getCurrentFullUrl();
-        Debug::dumpToFile(['step' => 'current_url', 'url' => $currentUrl], 'SeoSectionManager', '/proto-log.log');
-
+        \Bitrix\Main\Diag\Debug::dumpToFile('current_url: ' . $currentUrl, '/proto-log.log');
         if ($currentUrl === '') {
-            Debug::dumpToFile(['step' => 'current_url_empty'], 'SeoSectionManager', '/proto-log.log');
+            \Bitrix\Main\Diag\Debug::dumpToFile('current_url_empty', '/proto-log.log');
             return false;
         }
 
-        $hlId = self::getHlIdBySection();
         $section = self::getCurrentSection();
-        $sectionMap = self::getSectionMap();
-        Debug::dumpToFile(['step' => 'section_check', 'section' => $section, 'hlId' => $hlId, 'map' => $sectionMap], 'SeoSectionManager', '/proto-log.log');
-
+        $hlId = self::getHlIdBySection();
+        \Bitrix\Main\Diag\Debug::dumpToFile('section: ' . ($section ?: 'null') . ', hlId: ' . ($hlId ?: 'null'), '/proto-log.log');
         if (!$hlId) {
-            Debug::dumpToFile(['step' => 'hl_id_not_found'], 'SeoSectionManager', '/proto-log.log');
+            \Bitrix\Main\Diag\Debug::dumpToFile('hlId_null', '/proto-log.log');
             return false;
         }
 
         $entityClass = self::getHlDataClass($hlId);
         if (!$entityClass) {
-            Debug::dumpToFile(['step' => 'entity_class_not_found', 'hlId' => $hlId], 'SeoSectionManager', '/proto-log.log');
+            \Bitrix\Main\Diag\Debug::dumpToFile('entity_class_null', '/proto-log.log');
             return false;
         }
 
@@ -227,47 +218,24 @@ class SeoSectionManager
                 'limit' => 1,
             ])->fetch();
 
-            Debug::dumpToFile(['step' => 'fetch_result', 'found' => (bool)$record, 'url' => $currentUrl, 'hlId' => $hlId], 'SeoSectionManager', '/proto-log.log');
-
-            if (!$record) {
-                return false;
-            }
-
-            Debug::dumpToFile(['step' => 'record_found', 'record_id' => $record['ID']], 'SeoSectionManager', '/proto-log.log');
-
-            $rule = $record;
-            $GLOBALS['SEO_SECTION_RULE'] = $record;
-
-            return $rule;
-        } catch (\Throwable $e) {
-            Debug::dumpToFile(['step' => 'exception', 'error' => $e->getMessage()], 'SeoSectionManager', '/proto-log.log');
+            \Bitrix\Main\Diag\Debug::dumpToFile('record_fetch_attempt, found: ' . ($record ? 'yes' : 'no'), '/proto-log.log');
+        } catch (\Exception $e) {
+            \Bitrix\Main\Diag\Debug::dumpToFile('record_fetch_error: ' . $e->getMessage(), '/proto-log.log');
             return false;
         }
-    }
 
-    public static function init()
-    {
-        $rule = self::getCurrentRule();
-        if (!$rule) {
-            return;
+        if (!$record) {
+            \Bitrix\Main\Diag\Debug::dumpToFile('no_matching_record', '/proto-log.log');
+            return false;
         }
 
-        if (!empty($rule['UF_H1'])) {
-            $GLOBALS['SEO_SECTION_H1'] = $rule['UF_H1'];
-        }
+        \Bitrix\Main\Diag\Debug::dumpToFile('record_found_id: ' . $record['ID'], '/proto-log.log');
+        \Bitrix\Main\Diag\Debug::dumpToFile('UF_DETAIL_TEXT: ' . (isset($record['UF_DETAIL_TEXT']) ? 'set' : 'not_set'), '/proto-log.log');
 
-        if (!empty($rule['UF_DETAIL_TEXT'])) {
-            $GLOBALS['SEO_SECTION_DETAIL_TEXT'] = $rule['UF_DETAIL_TEXT'];
-        }
+        $rule = $record;
+        $GLOBALS['SEO_SECTION_RULE'] = $record;
 
-        if (!empty($rule['UF_ADDITIONAL_BOTTOM_TEXT'])) {
-            $GLOBALS['SEO_SECTION_ADDITIONAL_BOTTOM_TEXT'] = $rule['UF_ADDITIONAL_BOTTOM_TEXT'];
-        }
-    }
-
-    public static function addLog($message)
-    {
-        Debug::dumpToFile($message, 'SeoSectionManager', '/proto-log.log');
+        return $rule;
     }
 
     public static function onEpilog()
