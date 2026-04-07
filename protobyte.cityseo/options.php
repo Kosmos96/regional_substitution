@@ -6,7 +6,7 @@ $moduleId = 'protobyte.cityseo';
 CModule::IncludeModule($moduleId);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && check_bitrix_sessid()) {
-    $enabled = isset($_POST['cityseo_enabled']) && $_POST['cityseo_enabled'] === 'Y' ? 'Y' : 'N';
+    $enabled = isset($_POST['cityseo_enabled']) ? 'Y' : 'N';
     $sectionMap = trim($_POST['cityseo_section_map'] ?? '');
 
     COption::SetOptionString($moduleId, 'cityseo_enabled', $enabled);
