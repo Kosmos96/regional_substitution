@@ -125,12 +125,6 @@ class SeoSectionManager
             }
         }
 
-        if (count($map) === 1) {
-            $onlySection = array_key_first($map);
-            Debug::dumpToFile(['method' => 'getCurrentSection', 'path' => $path, 'only_section' => $onlySection], 'SeoSectionManager', '/proto-log.log');
-            return $onlySection;
-        }
-
         Debug::dumpToFile(['method' => 'getCurrentSection', 'path' => $path, 'not_matched', 'sections' => array_keys($map)], 'SeoSectionManager', '/proto-log.log');
         return null;
     }
@@ -147,9 +141,7 @@ class SeoSectionManager
             return $map[$section];
         }
 
-        if (count($map) === 1) {
-            return array_values($map)[0];
-        }
+        Debug::dumpToFile(['step' => 'section_not_found', 'section' => $section, 'map' => $map], 'SeoSectionManager', '/proto-log.log');
 
         return null;
     }
