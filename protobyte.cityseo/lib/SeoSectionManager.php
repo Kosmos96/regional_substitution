@@ -245,6 +245,26 @@ class SeoSectionManager
         }
     }
 
+    public static function init()
+    {
+        $rule = self::getCurrentRule();
+        if (!$rule) {
+            return;
+        }
+
+        if (!empty($rule['UF_H1'])) {
+            $GLOBALS['SEO_SECTION_H1'] = $rule['UF_H1'];
+        }
+
+        if (!empty($rule['UF_DETAIL_TEXT'])) {
+            $GLOBALS['SEO_SECTION_DETAIL_TEXT'] = $rule['UF_DETAIL_TEXT'];
+        }
+
+        if (!empty($rule['UF_ADDITIONAL_BOTTOM_TEXT'])) {
+            $GLOBALS['SEO_SECTION_ADDITIONAL_BOTTOM_TEXT'] = $rule['UF_ADDITIONAL_BOTTOM_TEXT'];
+        }
+    }
+
     public static function addLog($message)
     {
         Debug::dumpToFile($message, 'SeoSectionManager', '/proto-log.log');
