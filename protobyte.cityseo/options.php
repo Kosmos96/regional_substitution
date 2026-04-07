@@ -7,17 +7,17 @@ CModule::IncludeModule($moduleId);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && check_bitrix_sessid()) {
     $enabled = isset($_POST['cityseo_enabled']) && $_POST['cityseo_enabled'] === 'Y' ? 'Y' : 'N';
-    $sampleText = trim($_POST['cityseo_sample_text'] ?? '');
+    $sectionMap = trim($_POST['cityseo_section_map'] ?? '');
 
     COption::SetOptionString($moduleId, 'cityseo_enabled', $enabled);
-    COption::SetOptionString($moduleId, 'cityseo_sample_text', $sampleText);
+    COption::SetOptionString($moduleId, 'cityseo_section_map', $sectionMap);
 
     echo CAdminMessage::ShowNote(Loc::getMessage('PROTOBYTE_CITYSEO_OPTIONS_SAVED'));
 }
 
 $arOptions = [
     ['cityseo_enabled', Loc::getMessage('PROTOBYTE_CITYSEO_OPTION_ENABLED'), 'N', ['checkbox']],
-    ['cityseo_sample_text', Loc::getMessage('PROTOBYTE_CITYSEO_OPTION_SAMPLE_TEXT'), '', ['text', 50]],
+    ['cityseo_section_map', Loc::getMessage('PROTOBYTE_CITYSEO_OPTION_SECTION_MAP'), "services=11", ['textarea', 6, 80]],
 ];
 
 $tabControl = new CAdminTabControl('tabControl', [
@@ -46,6 +46,13 @@ $tabControl->Begin();
             <td width="60%">
                 <?php if ($type[0] === 'checkbox'): ?>
                     <input type="checkbox" id="<?php echo htmlspecialcharsbx($name) ?>" name="<?php echo htmlspecialcharsbx($name) ?>" value="Y" <?php echo $value === 'Y' ? 'checked' : '' ?>>
+                <?php elseif ($type[0] === 'textarea'): ?>
+                    <textarea rows="<?php echo (int)$type[1] ?>" cols="<?php echo (int)$type[2] ?>" name="<?php echo htmlspecialcharsbx($name) ?>"><?php echo htmlspecialcharsbx($value) ?></textarea>
+                    <div class="adm-info-message-wrap">
+                        <div class="adm-info-message">
+                            <?php echo Loc::getMessage('PROTOBYTE_CITYSEO_OPTION_SECTION_MAP_HELP') ?>
+                        </div>
+                    </div>
                 <?php elseif ($type[0] === 'text'): ?>
                     <input type="text" size="<?php echo (int)$type[1] ?>" name="<?php echo htmlspecialcharsbx($name) ?>" value="<?php echo htmlspecialcharsbx($value) ?>">
                 <?php endif; ?>

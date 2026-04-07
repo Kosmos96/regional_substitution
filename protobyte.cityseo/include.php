@@ -1,3 +1,19 @@
 <?php
-// Точка подключения модуля protobyte.cityseo.
-// Здесь можно подключить обработчики событий и вспомогательные классы.
+use Bitrix\Main\Localization\Loc;
+
+require_once __DIR__ . '/lib/SeoSectionManager.php';
+
+function protobyte_cityseo_onEpilog()
+{
+    SeoSectionManager::onEpilog();
+}
+
+function protobyte_cityseo_onEndBufferContent(&$content)
+{
+    SeoSectionManager::onEndBufferContent($content);
+}
+
+if (!defined('ADMIN_SECTION') || ADMIN_SECTION !== true) {
+    AddEventHandler('main', 'OnEpilog', 'protobyte_cityseo_onEpilog');
+    AddEventHandler('main', 'OnEndBufferContent', 'protobyte_cityseo_onEndBufferContent');
+}

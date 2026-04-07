@@ -38,11 +38,17 @@ class protobyte_cityseo extends CModule
 
     public function InstallEvents()
     {
+        RegisterModuleDependences('main', 'OnEpilog', $this->MODULE_ID, false, 'protobyte_cityseo_onEpilog', 100, 'include.php');
+        RegisterModuleDependences('main', 'OnEndBufferContent', $this->MODULE_ID, false, 'protobyte_cityseo_onEndBufferContent', 100, 'include.php');
+
         return true;
     }
 
     public function UnInstallEvents()
     {
+        UnRegisterModuleDependences('main', 'OnEpilog', $this->MODULE_ID, false, 'protobyte_cityseo_onEpilog', 100, 'include.php');
+        UnRegisterModuleDependences('main', 'OnEndBufferContent', $this->MODULE_ID, false, 'protobyte_cityseo_onEndBufferContent', 100, 'include.php');
+
         return true;
     }
 
