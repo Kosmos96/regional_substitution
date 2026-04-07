@@ -166,6 +166,22 @@ class SeoSectionManager
         return $cache[$hlId];
     }
 
+    public static function init()
+    {
+        $rule = self::getCurrentRule();
+        if (!$rule) {
+            return;
+        }
+
+        if (!empty($rule['UF_DETAIL_TEXT'])) {
+            $GLOBALS['SEO_SECTION_DETAIL_TEXT'] = $rule['UF_DETAIL_TEXT'];
+        }
+
+        if (!empty($rule['UF_ADDITIONAL_BOTTOM_TEXT'])) {
+            $GLOBALS['SEO_SECTION_ADDITIONAL_BOTTOM_TEXT'] = $rule['UF_ADDITIONAL_BOTTOM_TEXT'];
+        }
+    }
+
     public static function getCurrentRule()
     {
         static $rule;
@@ -179,37 +195,40 @@ class SeoSectionManager
         $rule = false;
 
         if (!self::isEnabled()) {
-            \Bitrix\Main\Diag\Debug::dumpToFile('cityseo_disabled', '/proto-log.log');
             return false;
         }
 
         if (!Loader::includeModule('highloadblock')) {
-            \Bitrix\Main\Diag\Debug::dumpToFile('highloadblock_not_found', '/proto-log.log');
             return false;
         }
 
         $currentUrl = self::getCurrentFullUrl();
-        \Bitrix\Main\Diag\Debug::dumpToFile('current_url: ' . $currentUrl, '/proto-log.log');
         if ($currentUrl === '') {
-            \Bitrix\Main\Diag\Debug::dumpToFile('current_url_empty', '/proto-log.log');
             return false;
         }
 
         $section = self::getCurrentSection();
         $hlId = self::getHlIdBySection();
-        \Bitrix\Main\Diag\Debug::dumpToFile('section: ' . ($section ?: 'null') . ', hlId: ' . ($hlId ?: 'null'), '/proto-log.log');
         if (!$hlId) {
-            \Bitrix\Main\Diag\Debug::dumpToFile('hlId_null', '/proto-log.log');
             return false;
         }
 
         $entityClass = self::getHlDataClass($hlId);
         if (!$entityClass) {
-            \Bitrix\Main\Diag\Debug::dumpToFile('entity_class_null', '/proto-log.log');
             return false;
         }
 
         try {
+            // Сначала получим всё для дебага
+            $allRecords = $entityClass::getList([
+                'limit' => 100,
+            ])->fetchAll();
+            
+            foreach ($allRecords as $rec) {
+                // Проверяем точное совпадение с текущим URL
+                $match = ($rec['UF_URL'] === $currentUrl);
+            }
+
             $record = $entityClass::getList([
                 'filter' => [
                     '=UF_ACTIVE' => 1,
@@ -217,20 +236,23 @@ class SeoSectionManager
                 ],
                 'limit' => 1,
             ])->fetch();
-
-            \Bitrix\Main\Diag\Debug::dumpToFile('record_fetch_attempt, found: ' . ($record ? 'yes' : 'no'), '/proto-log.log');
+            
+            if (!$record) {
+                $record = $entityClass::getList([
+                    'filter' => [
+                        'UF_ACTIVE' => 1,
+                        'UF_URL' => $currentUrl,
+                    ],
+                    'limit' => 1,
+                ])->fetch();
+            }
         } catch (\Exception $e) {
-            \Bitrix\Main\Diag\Debug::dumpToFile('record_fetch_error: ' . $e->getMessage(), '/proto-log.log');
             return false;
         }
 
         if (!$record) {
-            \Bitrix\Main\Diag\Debug::dumpToFile('no_matching_record', '/proto-log.log');
             return false;
         }
-
-        \Bitrix\Main\Diag\Debug::dumpToFile('record_found_id: ' . $record['ID'], '/proto-log.log');
-        \Bitrix\Main\Diag\Debug::dumpToFile('UF_DETAIL_TEXT: ' . (isset($record['UF_DETAIL_TEXT']) ? 'set' : 'not_set'), '/proto-log.log');
 
         $rule = $record;
         $GLOBALS['SEO_SECTION_RULE'] = $record;

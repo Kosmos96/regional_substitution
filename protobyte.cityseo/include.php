@@ -3,6 +3,11 @@ use Bitrix\Main\Localization\Loc;
 
 require_once __DIR__ . '/lib/SeoSectionManager.php';
 
+// Инициализируем GLOBALS при загрузке модуля (до рендеринга шаблона)
+if (!defined('ADMIN_SECTION') || ADMIN_SECTION !== true) {
+    SeoSectionManager::init();
+}
+
 function protobyte_cityseo_onBeforeProlog()
 {
     SeoSectionManager::init();

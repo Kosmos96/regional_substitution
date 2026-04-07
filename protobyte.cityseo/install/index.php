@@ -38,6 +38,7 @@ class protobyte_cityseo extends CModule
 
     public function InstallEvents()
     {
+        RegisterModuleDependences('main', 'OnBeforeProlog', $this->MODULE_ID, false, 'protobyte_cityseo_onBeforeProlog', 100, 'include.php');
         RegisterModuleDependences('main', 'OnEpilog', $this->MODULE_ID, false, 'protobyte_cityseo_onEpilog', 100, 'include.php');
         RegisterModuleDependences('main', 'OnEndBufferContent', $this->MODULE_ID, false, 'protobyte_cityseo_onEndBufferContent', 100, 'include.php');
 
@@ -46,6 +47,7 @@ class protobyte_cityseo extends CModule
 
     public function UnInstallEvents()
     {
+        UnRegisterModuleDependences('main', 'OnBeforeProlog', $this->MODULE_ID, false, 'protobyte_cityseo_onBeforeProlog', 100, 'include.php');
         UnRegisterModuleDependences('main', 'OnEpilog', $this->MODULE_ID, false, 'protobyte_cityseo_onEpilog', 100, 'include.php');
         UnRegisterModuleDependences('main', 'OnEndBufferContent', $this->MODULE_ID, false, 'protobyte_cityseo_onEndBufferContent', 100, 'include.php');
 
