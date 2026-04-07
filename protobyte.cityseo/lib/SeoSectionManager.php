@@ -1,6 +1,7 @@
 <?php
 use Bitrix\Main\Context;
 use Bitrix\Main\Loader;
+use Bitrix\Main\Diag\Debug;
 use Bitrix\Highloadblock\HighloadBlockTable;
 
 /**
@@ -24,6 +25,7 @@ class SeoSectionManager
         $result = [];
 
         if ($raw === '') {
+            Debug::dumpToFile(['method' => 'getSectionMap', 'raw' => 'empty'], 'SeoSectionManager', '/proto-log.log');
             return $result;
         }
 
@@ -54,6 +56,7 @@ class SeoSectionManager
             $result[$section] = $hlId;
         }
 
+        Debug::dumpToFile(['method' => 'getSectionMap', 'result' => $result], 'SeoSectionManager', '/proto-log.log');
         return $result;
     }
 
@@ -91,13 +94,18 @@ class SeoSectionManager
         $uri = '/' . trim($uri, '/') . '/';
         $uri = preg_replace('#/+#', '/', $uri);
 
-        return self::normalizeFullUrl($scheme . '://' . $host . $uri);
+        $fullUrl = self::normalizeFullUrl($scheme . '://' . $host . $uri);
+        Debug::dumpToFile(['method' => 'getCurrentFullUrl', 'scheme' => $scheme, 'host' => $host, 'uri' => $uri, 'fullUrl' => $fullUrl], 'SeoSectionManager', '/proto-log.log');
+
+        return $fullUrl;
     }
+
 
     public static function getCurrentSection()
     {
         $map = self::getSectionMap();
         if (empty($map)) {
+            Debug::dumpToFile(['method' => 'getCurrentSection', 'error' => 'map_empty'], 'SeoSectionManager', '/proto-log.log');
             return null;
         }
 
@@ -112,14 +120,18 @@ class SeoSectionManager
         foreach ($sections as $section) {
             $prefix = '/' . trim($section, '/') . '/';
             if ($path === $prefix || str_starts_with($path, $prefix)) {
+                Debug::dumpToFile(['method' => 'getCurrentSection', 'path' => $path, 'section' => $section, 'prefix' => $prefix], 'SeoSectionManager', '/proto-log.log');
                 return $section;
             }
         }
 
         if (count($map) === 1) {
-            return array_key_first($map);
+            $onlySection = array_key_first($map);
+            Debug::dumpToFile(['method' => 'getCurrentSection', 'path' => $path, 'only_section' => $onlySection], 'SeoSectionManager', '/proto-log.log');
+            return $onlySection;
         }
 
+        Debug::dumpToFile(['method' => 'getCurrentSection', 'path' => $path, 'not_matched', 'sections' => array_keys($map)], 'SeoSectionManager', '/proto-log.log');
         return null;
     }
 
@@ -178,45 +190,72 @@ class SeoSectionManager
         $isLoaded = true;
         $rule = false;
 
+        Debug::dumpToFile(['step' => 'start', 'enabled' => self::isEnabled()], 'SeoSectionManager', '/proto-log.log');
+
         if (!self::isEnabled()) {
+            Debug::dumpToFile(['step' => 'disabled'], 'SeoSectionManager', '/proto-log.log');
             return false;
         }
 
         if (!Loader::includeModule('highloadblock')) {
+            Debug::dumpToFile(['step' => 'highloadblock_not_loaded'], 'SeoSectionManager', '/proto-log.log');
             return false;
         }
 
         $currentUrl = self::getCurrentFullUrl();
+        Debug::dumpToFile(['step' => 'current_url', 'url' => $currentUrl], 'SeoSectionManager', '/proto-log.log');
+
         if ($currentUrl === '') {
+            Debug::dumpToFile(['step' => 'current_url_empty'], 'SeoSectionManager', '/proto-log.log');
             return false;
         }
 
         $hlId = self::getHlIdBySection();
+        $section = self::getCurrentSection();
+        $sectionMap = self::getSectionMap();
+        Debug::dumpToFile(['step' => 'section_check', 'section' => $section, 'hlId' => $hlId, 'map' => $sectionMap], 'SeoSectionManager', '/proto-log.log');
+
         if (!$hlId) {
+            Debug::dumpToFile(['step' => 'hl_id_not_found'], 'SeoSectionManager', '/proto-log.log');
             return false;
         }
 
         $entityClass = self::getHlDataClass($hlId);
         if (!$entityClass) {
+            Debug::dumpToFile(['step' => 'entity_class_not_found', 'hlId' => $hlId], 'SeoSectionManager', '/proto-log.log');
             return false;
         }
 
-        $record = $entityClass::getList([
-            'filter' => [
-                '=UF_ACTIVE' => 1,
-                '=UF_URL' => $currentUrl,
-            ],
-            'limit' => 1,
-        ])->fetch();
+        try {
+            $record = $entityClass::getList([
+                'filter' => [
+                    '=UF_ACTIVE' => 1,
+                    '=UF_URL' => $currentUrl,
+                ],
+                'limit' => 1,
+            ])->fetch();
 
-        if (!$record) {
+            Debug::dumpToFile(['step' => 'fetch_result', 'found' => (bool)$record, 'url' => $currentUrl, 'hlId' => $hlId], 'SeoSectionManager', '/proto-log.log');
+
+            if (!$record) {
+                return false;
+            }
+
+            Debug::dumpToFile(['step' => 'record_found', 'record_id' => $record['ID']], 'SeoSectionManager', '/proto-log.log');
+
+            $rule = $record;
+            $GLOBALS['SEO_SECTION_RULE'] = $record;
+
+            return $rule;
+        } catch (\Throwable $e) {
+            Debug::dumpToFile(['step' => 'exception', 'error' => $e->getMessage()], 'SeoSectionManager', '/proto-log.log');
             return false;
         }
+    }
 
-        $rule = $record;
-        $GLOBALS['SEO_SECTION_RULE'] = $record;
-
-        return $rule;
+    public static function addLog($message)
+    {
+        Debug::dumpToFile($message, 'SeoSectionManager', '/proto-log.log');
     }
 
     public static function onEpilog()
